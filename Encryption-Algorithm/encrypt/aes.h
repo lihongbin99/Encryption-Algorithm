@@ -22,9 +22,6 @@
 #define AES_ENC_ENCRYPT 1
 #define AES_ENC_DECRYPT 0
 
-#define AES_ROW     4
-#define AES_COLUMNS 4
-
 int aesAlgorithm(
 	const unsigned char* in,  int inLen, 
 	const unsigned char* key, const unsigned char* iv,

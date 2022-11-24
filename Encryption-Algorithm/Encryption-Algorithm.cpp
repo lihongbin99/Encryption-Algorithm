@@ -105,6 +105,9 @@ void aesTest() {
 	EVP_CIPHER_CTX* ectx;
 	int opensslTotalLen = 0;
 	int decryptLen = 0;
+#endif
+
+#ifdef USE_OPENSSL
 	ectx = EVP_CIPHER_CTX_new();
 	EVP_CipherInit_ex(ectx, EVP_aes_128_ecb(), NULL, aesKey, NULL, AES_DECRYPT);
 	EVP_CIPHER_CTX_set_padding(ectx, 0);

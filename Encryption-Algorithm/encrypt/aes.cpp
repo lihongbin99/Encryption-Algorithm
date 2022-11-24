@@ -38,14 +38,14 @@ const unsigned char ReS_BOX[256] = {
 	0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0C, 0x7D,
 };
 
-const unsigned char MixArray[16] = {
+const unsigned char MixArray[4][4] = {
 	0x02, 0x03, 0x01, 0x01,
 	0x01, 0x02, 0x03, 0x01,
 	0x01, 0x01, 0x02, 0x03,
 	0x03, 0x01, 0x01, 0x02,
 };
 
-const unsigned char ReMixArray[16] = {
+const unsigned char ReMixArray[4][4] = {
 	0x0E, 0x0B, 0x0D, 0x09,
 	0x09, 0x0E, 0x0B, 0x0D,
 	0x0D, 0x09, 0x0E, 0x0B,
@@ -58,25 +58,26 @@ const unsigned char Rcon[10] = {
 	0x1B, 0x36,
 };
 
-void aesEncrypt(const unsigned char* in, int inLen,
+int aesEncrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
 	int aesMode,
 	int nk, int nr);
-void aesDecrypt(const unsigned char* in, int inLen,
+int aesDecrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
 	int aesMode,
 	int nk, int nr);
 
-void extendKey(unsigned char* subKey, int nk, int nr);
-void AddRoundKey(unsigned char* state, unsigned char* key);
-void SubBytes(unsigned char* state);
-void ReSubBytes(unsigned char* state);
-void ShiftRows(unsigned char* state);
-void ReShiftRows(unsigned char* state);
-void MixColumns(unsigned char* state, unsigned char* stateTemp);
-void ReMixColumns(unsigned char* state, unsigned char* stateTemp);
+
+void extendKey(const unsigned char* key, unsigned char subKey[4/*行*/][60/*列*/], int nk, int nr);
+void AddRoundKey(unsigned char state[4/*行*/][4/*列*/], unsigned char subKey[4/*行*/][60/*列*/], int currentNr);
+void SubBytes(unsigned char state[4/*行*/][4/*列*/]);
+void ReSubBytes(unsigned char state[4/*行*/][4/*列*/]);
+void ShiftRows(unsigned char state[4/*行*/][4/*列*/]);
+void ReShiftRows(unsigned char state[4/*行*/][4/*列*/]);
+void MixColumns(unsigned char state[4/*行*/][4/*列*/]);
+void ReMixColumns(unsigned char state[4/*行*/][4/*列*/]);
 
 int aesAlgorithm(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
@@ -117,99 +118,61 @@ int aesAlgorithm(const unsigned char* in, int inLen,
 		return 0;
 	}
 
-	if (enc == AES_ENC_ENCRYPT) {
-		switch (paddingMode) {
-		case AES_PADDING_MODE_NONE:
-			if (inLen % 16 != 0) {
-				return 0;
-			}
-			break;
-		case AES_PADDING_MODE_PKCS7:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ISO7816_4:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ANSI923:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ISO10126:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ZERO:
-			return 0;// 未支持
-		default:
-			return 0;
-		}
-	}
-	else if (inLen % 16 != 0) {
+	if ((paddingMode == AES_PADDING_MODE_NONE || enc == AES_ENC_DECRYPT) && inLen % 16 != 0) {
 		return 0;
 	}
 
+	int resultLen = 0;
 	if (enc == AES_ENC_ENCRYPT) {
-		aesEncrypt(in, inLen, key, iv, out, aesMode, nk, nr);
+		resultLen = aesEncrypt(in, inLen, key, iv, out, aesMode, nk, nr);
 	}
 	else if (enc == AES_ENC_DECRYPT) {
-		aesDecrypt(in, inLen, key, iv, out, aesMode, nk, nr);
+		resultLen = aesDecrypt(in, inLen, key, iv, out, aesMode, nk, nr);
 	}
 	else {
 		return 0;
 	}
 
-	if (enc == AES_ENC_DECRYPT) {
-		switch (paddingMode) {
-		case AES_PADDING_MODE_NONE:
-			break;
-		case AES_PADDING_MODE_PKCS7:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ISO7816_4:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ANSI923:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ISO10126:
-			return 0;// 未支持
-		case AES_PADDING_MODE_ZERO:
-			return 0;// 未支持
-		default:
-			return 0;
-		}
-	}
-
-	return inLen;
+	return resultLen;
 }
 
-void aesEncrypt(const unsigned char* in, int inLen,
+int aesEncrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
 	int aesMode,
 	int nk, int nr) {
+	int resultLen = 0;
 	// 分配内存
-	unsigned char* state = new unsigned char[AES_ROW * AES_COLUMNS];
-	unsigned char* subKey = new unsigned char[AES_ROW * AES_COLUMNS * (nr + 1)];
-	memcpy(subKey, key, nk * AES_COLUMNS);
-	unsigned char* stateTemp = new unsigned char[AES_ROW * AES_COLUMNS];
+	unsigned char state    [4/*行*/][ 4/*列*/];
+	unsigned char subKey   [4/*行*/][60/*列*/];
 
 	// 密钥扩展
-	extendKey(subKey, nk, nr);
+	extendKey(key, subKey, nk, nr);
 
 	// 分组加密
-	for (int index = 0; index < inLen; index += AES_ROW * AES_COLUMNS) {
-		memcpy(state, in + index, AES_ROW * AES_COLUMNS);
+	int len = inLen - (inLen % 16);
+	for (int index = 0; index < len; index += 16) {
+		for (int i = 0; i < 16; ++i) {
+			state[i & 0x03][i >> 2] = in[index + i];
+		}
 
 		if (aesMode == AES_MODE_CBC) {
 			if (index == 0) {
-				for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-					state[i] ^= iv[i];
+				for (int i = 0; i < 16; ++i) {
+					state[i & 0x03][i >> 2] ^= iv[i];
 				}
-			}
-			else {
-				for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-					state[i] ^= out[index - AES_ROW * AES_COLUMNS + i];
+			} else {
+				for (int i = 0; i < 16; ++i) {
+					state[i & 0x03][i >> 2] ^= out[index - 16 + i];
 				}
 			}
 		}
 
 		// 在开始加密前先执行一次轮密钥加(密钥漂白)
-		AddRoundKey(state, subKey);
+		AddRoundKey(state, subKey, 0);
 
 		// 开始加密
-		for (int currentNr = 0; currentNr < nr; ++currentNr) {
+		for (int currentNr = 1; currentNr <= nr; ++currentNr) {
 			// 字节代换层
 			SubBytes(state);
 
@@ -217,47 +180,50 @@ void aesEncrypt(const unsigned char* in, int inLen,
 			ShiftRows(state);
 
 			// 列混淆
-			if (currentNr != nr - 1) {// 最后一轮不进行列混淆
-				MixColumns(state, stateTemp);
+			if (currentNr != nr) {// 最后一轮不进行列混淆
+				MixColumns(state);
 			}
+			
 			// 密钥加法层
-			AddRoundKey(state, subKey + AES_ROW * AES_COLUMNS * (currentNr + 1));
+			AddRoundKey(state, subKey, currentNr);
 		}
-		memcpy(out + index, state, AES_ROW * AES_COLUMNS);
+
+		for (int i = 0; i < 16; ++i) {
+			out[index + i] = state[i & 0x03][i >> 2];
+		}
+		resultLen += 16;
 	}
 
-	// 释放内存
-	delete[] state;
-	delete[] subKey;
-	delete[] stateTemp;
+	return resultLen;
 }
 
-void aesDecrypt(const unsigned char* in, int inLen,
+int aesDecrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
 	int aesMode,
 	int nk, int nr) {
+	int resultLen = 0;
 	// 分配内存
-	unsigned char* state = new unsigned char[AES_ROW * AES_COLUMNS];
-	unsigned char* subKey = new unsigned char[AES_ROW * AES_COLUMNS * (nr + 1)];
-	memcpy(subKey, key, nk * AES_COLUMNS);
-	unsigned char* stateTemp = new unsigned char[AES_ROW * AES_COLUMNS];
+	unsigned char state[4/*行*/][4/*列*/];
+	unsigned char subKey[4/*行*/][60/*列*/];
 
 	// 密钥扩展
-	extendKey(subKey, nk, nr);
+	extendKey(key, subKey, nk, nr);
 
-	// 分组解密
-	for (int index = inLen - AES_ROW * AES_COLUMNS; index >= 0; index -= AES_ROW * AES_COLUMNS) {
-		memcpy(state, in + index, AES_ROW * AES_COLUMNS);
+	// 分组加密
+	for (int index = inLen - 16; index >= 0; index -= 16) {
+		for (int i = 0; i < 16; ++i) {
+			state[i & 0x03][i >> 2] = in[index + i];
+		}
 
 		// 开始解密
-		for (int currentNr = nr - 1; currentNr >= 0; --currentNr) {
+		for (int currentNr = nr; currentNr >= 1; --currentNr) {
 			// 密钥加法层
-			AddRoundKey(state, subKey + AES_ROW * AES_COLUMNS * (currentNr + 1));
+			AddRoundKey(state, subKey, currentNr);
 
 			// 列混淆
-			if (currentNr != nr - 1) {// 最后一轮不进行列混淆
-				ReMixColumns(state, stateTemp);
+			if (currentNr != nr) {// 最后一轮不进行列混淆
+				ReMixColumns(state);
 			}
 
 			// 行位移
@@ -268,40 +234,45 @@ void aesDecrypt(const unsigned char* in, int inLen,
 		}
 
 		// 在解密后需要在执行一次轮密钥加(密钥漂白)
-		AddRoundKey(state, subKey);
+		AddRoundKey(state, subKey, 0);
 
 		if (aesMode == AES_MODE_CBC) {
 			if (index == 0) {
-				for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-					state[i] ^= iv[i];
+				for (int i = 0; i < 16; ++i) {
+					state[i & 0x03][i >> 2] ^= iv[i];
 				}
-			}
-			else {
-				for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-					state[i] ^= in[index - AES_ROW * AES_COLUMNS + i];
+			} else {
+				for (int i = 0; i < 16; ++i) {
+					state[i & 0x03][i >> 2] ^= in[index - 16 + i];
 				}
 			}
 		}
 
-		memcpy(out + index, state, AES_ROW * AES_COLUMNS);
+		for (int i = 0; i < 16; ++i) {
+			out[index + i] = state[i & 0x03][i >> 2];
+		}
+		resultLen += 16;
 	}
-
-	// 释放内存
-	delete[] state;
-	delete[] subKey;
-	delete[] stateTemp;
+	return resultLen;
 }
 
-void extendKey(unsigned char* subKey, int nk, int nr) {
-	int rconIndex = 0;
-	for (int i = nk; i < (nr + 1) * AES_ROW; ++i) {
-		unsigned char temp[AES_COLUMNS];
-		memcpy(temp, subKey + ((i - 1) * AES_COLUMNS), sizeof(temp));
+void extendKey(const unsigned char* key, unsigned char subKey[4/*行*/][60/*列*/], int nk, int nr) {
+	for (int i = 0; i < 4/*行*/ * nk; ++i) {
+		subKey[i & 0x03][i >> 2] = key[i];
+	}
 
-		if (i % nk == 0) {
+	unsigned char temp[4];
+	int rconIndex = 0;
+	for (int cloumn = nk; cloumn < (nr + 1) * 4; ++cloumn) {
+		temp[0] = subKey[0][cloumn - 1];
+		temp[1] = subKey[1][cloumn - 1];
+		temp[2] = subKey[2][cloumn - 1];
+		temp[3] = subKey[3][cloumn - 1];
+
+		if (cloumn % nk == 0) {
 			// 字循环
-			unsigned int* tip = (unsigned int*)temp;
-			*tip = (*tip) << 24 | (*tip) >> 8;
+			unsigned int* tempIntptr = (unsigned int*)temp;
+			*tempIntptr = (*tempIntptr) << 24 | (*tempIntptr) >> 8;
 			// 字节代换
 			temp[0] = S_BOX[temp[0]];
 			temp[1] = S_BOX[temp[1]];
@@ -309,8 +280,7 @@ void extendKey(unsigned char* subKey, int nk, int nr) {
 			temp[3] = S_BOX[temp[3]];
 			// 轮常量异或
 			temp[0] ^= Rcon[rconIndex++];
-		}
-		else if (nk == 8 && i % 4 == 0) {
+		} else if (nk == 8 && cloumn % 4 == 0) {
 			// AES-256 的特殊处理
 			// 字节代换
 			temp[0] = S_BOX[temp[0]];
@@ -319,71 +289,49 @@ void extendKey(unsigned char* subKey, int nk, int nr) {
 			temp[3] = S_BOX[temp[3]];
 		}
 
-		subKey[i * AES_COLUMNS + 0] = subKey[(i - nk) * AES_COLUMNS + 0] ^ temp[0];
-		subKey[i * AES_COLUMNS + 1] = subKey[(i - nk) * AES_COLUMNS + 1] ^ temp[1];
-		subKey[i * AES_COLUMNS + 2] = subKey[(i - nk) * AES_COLUMNS + 2] ^ temp[2];
-		subKey[i * AES_COLUMNS + 3] = subKey[(i - nk) * AES_COLUMNS + 3] ^ temp[3];
+		subKey[0][cloumn] = subKey[0][cloumn - nk] ^ temp[0];
+		subKey[1][cloumn] = subKey[1][cloumn - nk] ^ temp[1];
+		subKey[2][cloumn] = subKey[2][cloumn - nk] ^ temp[2];
+		subKey[3][cloumn] = subKey[3][cloumn - nk] ^ temp[3];
 	}
 }
 
-void AddRoundKey(unsigned char* state, unsigned char* key) {
-	for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-		state[i] ^= key[i];
+void AddRoundKey(unsigned char state[4/*行*/][4/*列*/], unsigned char subKey[4/*行*/][60/*列*/], int currentNr) {
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			state[row][cloumn] ^= subKey[row][currentNr * 4 + cloumn];
+		}
 	}
 }
 
-void SubBytes(unsigned char* state) {
-	for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-		state[i] = S_BOX[state[i]];
+void SubBytes(unsigned char state[4/*行*/][4/*列*/]) {
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			state[row][cloumn] = S_BOX[state[row][cloumn]];
+		}
 	}
 }
 
-void ReSubBytes(unsigned char* state) {
-	for (int i = 0; i < AES_ROW * AES_COLUMNS; ++i) {
-		state[i] = ReS_BOX[state[i]];
+void ReSubBytes(unsigned char state[4/*行*/][4/*列*/]) {
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			state[row][cloumn] = ReS_BOX[state[row][cloumn]];
+		}
 	}
 }
 
-void ShiftRows(unsigned char* state) {
-	int num = state[1];
-	state[1] = state[5];
-	state[5] = state[9];
-	state[9] = state[13];
-	state[13] = num;
-
-	num = state[2];
-	state[2] = state[10];
-	state[10] = num;
-	num = state[6];
-	state[6] = state[14];
-	state[14] = num;
-
-	num = state[3];
-	state[3] = state[15];
-	state[15] = state[11];
-	state[11] = state[7];
-	state[7] = num;
+void ShiftRows(unsigned char state[4/*行*/][4/*列*/]) {
+	unsigned int* tempIntPtr = (unsigned int*)state;
+	tempIntPtr[1] = tempIntPtr[1] >>  8 | tempIntPtr[1] << 24;
+	tempIntPtr[2] = tempIntPtr[2] >> 16 | tempIntPtr[2] << 16;
+	tempIntPtr[3] = tempIntPtr[3] >> 24 | tempIntPtr[3] <<  8;
 }
 
-void ReShiftRows(unsigned char* state) {
-	int num = state[1];
-	state[1] = state[13];
-	state[13] = state[9];
-	state[9] = state[5];
-	state[5] = num;
-
-	num = state[2];
-	state[2] = state[10];
-	state[10] = num;
-	num = state[6];
-	state[6] = state[14];
-	state[14] = num;
-
-	num = state[3];
-	state[3] = state[7];
-	state[7] = state[11];
-	state[11] = state[15];
-	state[15] = num;
+void ReShiftRows(unsigned char state[4/*行*/][4/*列*/]) {
+	unsigned int* tempIntPtr = (unsigned int*)state;
+	tempIntPtr[1] = tempIntPtr[1] <<  8 | tempIntPtr[1] >> 24;
+	tempIntPtr[2] = tempIntPtr[2] << 16 | tempIntPtr[2] >> 16;
+	tempIntPtr[3] = tempIntPtr[3] << 24 | tempIntPtr[3] >>  8;
 }
 
 unsigned char MixColumnsImpl(unsigned char mix, unsigned char num) {
@@ -398,35 +346,45 @@ unsigned char MixColumnsImpl(unsigned char mix, unsigned char num) {
 		if (num & 0x80) {
 			num = num << 1;
 			num ^= 0x1B;
-		}
-		else {
+		} else {
 			num = num << 1;
 		}
 	}
 	return result;
 }
-void MixColumns(unsigned char* state, unsigned char* stateTemp) {
-	memcpy(stateTemp, state, AES_ROW * AES_COLUMNS);
-	for (int i = 0; i < AES_ROW; ++i) {
-		for (int j = 0; j < AES_COLUMNS; j++) {
-			state[i * AES_COLUMNS + j] =
-				MixColumnsImpl(MixArray[j * AES_COLUMNS + 0], stateTemp[i * AES_COLUMNS + 0]) ^
-				MixColumnsImpl(MixArray[j * AES_COLUMNS + 1], stateTemp[i * AES_COLUMNS + 1]) ^
-				MixColumnsImpl(MixArray[j * AES_COLUMNS + 2], stateTemp[i * AES_COLUMNS + 2]) ^
-				MixColumnsImpl(MixArray[j * AES_COLUMNS + 3], stateTemp[i * AES_COLUMNS + 3]);
+void MixColumns(unsigned char state[4/*行*/][4/*列*/]) {
+	unsigned char stateTemp[4/*行*/][4/*列*/];
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			stateTemp[row][cloumn] = state[row][cloumn];
+		}
+	}
+
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			state[row][cloumn] =
+				MixColumnsImpl(MixArray[row][0], stateTemp[0][cloumn]) ^
+				MixColumnsImpl(MixArray[row][1], stateTemp[1][cloumn]) ^
+				MixColumnsImpl(MixArray[row][2], stateTemp[2][cloumn]) ^
+				MixColumnsImpl(MixArray[row][3], stateTemp[3][cloumn]);
 		}
 	}
 }
+void ReMixColumns(unsigned char state[4/*行*/][4/*列*/]) {
+	unsigned char stateTemp[4/*行*/][4/*列*/];
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			stateTemp[row][cloumn] = state[row][cloumn];
+		}
+	}
 
-void ReMixColumns(unsigned char* state, unsigned char* stateTemp) {
-	memcpy(stateTemp, state, AES_ROW * AES_COLUMNS);
-	for (int i = 0; i < AES_ROW; ++i) {
-		for (int j = 0; j < AES_COLUMNS; j++) {
-			state[i * AES_COLUMNS + j] =
-				MixColumnsImpl(ReMixArray[j * AES_COLUMNS + 0], stateTemp[i * AES_COLUMNS + 0]) ^
-				MixColumnsImpl(ReMixArray[j * AES_COLUMNS + 1], stateTemp[i * AES_COLUMNS + 1]) ^
-				MixColumnsImpl(ReMixArray[j * AES_COLUMNS + 2], stateTemp[i * AES_COLUMNS + 2]) ^
-				MixColumnsImpl(ReMixArray[j * AES_COLUMNS + 3], stateTemp[i * AES_COLUMNS + 3]);
+	for (int row = 0; row < 4; ++row) {
+		for (int cloumn = 0; cloumn < 4; ++cloumn) {
+			state[row][cloumn] =
+				MixColumnsImpl(ReMixArray[row][0], stateTemp[0][cloumn]) ^
+				MixColumnsImpl(ReMixArray[row][1], stateTemp[1][cloumn]) ^
+				MixColumnsImpl(ReMixArray[row][2], stateTemp[2][cloumn]) ^
+				MixColumnsImpl(ReMixArray[row][3], stateTemp[3][cloumn]);
 		}
 	}
 }
