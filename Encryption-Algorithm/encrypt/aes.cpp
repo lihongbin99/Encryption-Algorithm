@@ -61,12 +61,12 @@ const unsigned char Rcon[10] = {
 int aesEncrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
-	int aesMode,
+	int aesMode, int paddingMode,
 	int nk, int nr);
 int aesDecrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
-	int aesMode,
+	int aesMode, int paddingMode,
 	int nk, int nr);
 
 
@@ -124,10 +124,10 @@ int aesAlgorithm(const unsigned char* in, int inLen,
 
 	int resultLen = 0;
 	if (enc == AES_ENC_ENCRYPT) {
-		resultLen = aesEncrypt(in, inLen, key, iv, out, aesMode, nk, nr);
+		resultLen = aesEncrypt(in, inLen, key, iv, out, aesMode, paddingMode, nk, nr);
 	}
 	else if (enc == AES_ENC_DECRYPT) {
-		resultLen = aesDecrypt(in, inLen, key, iv, out, aesMode, nk, nr);
+		resultLen = aesDecrypt(in, inLen, key, iv, out, aesMode, paddingMode, nk, nr);
 	}
 	else {
 		return 0;
@@ -139,7 +139,7 @@ int aesAlgorithm(const unsigned char* in, int inLen,
 int aesEncrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
-	int aesMode,
+	int aesMode, int paddingMode,
 	int nk, int nr) {
 	int resultLen = 0;
 	// 分配内存
@@ -150,10 +150,22 @@ int aesEncrypt(const unsigned char* in, int inLen,
 	extendKey(key, subKey, nk, nr);
 
 	// 分组加密
-	int len = inLen - (inLen % 16);
-	for (int index = 0; index < len; index += 16) {
+	int modCount = inLen % 16;
+	int encryptLen = inLen;
+	if (paddingMode != AES_PADDING_MODE_NONE) {
+		encryptLen = modCount != 0 ? inLen + modCount : inLen + 16;
+	}
+	for (int index = 0; index < encryptLen; index += 16) {
 		for (int i = 0; i < 16; ++i) {
-			state[i & 0x03][i >> 2] = in[index + i];
+			if (index + i < inLen) {
+				state[i & 0x03][i >> 2] = in[index + i];
+			} else {
+				if (paddingMode == AES_PADDING_MODE_PKCS7) {
+					state[i & 0x03][i >> 2] = 16 - modCount;
+				} else {
+					return 0;
+				}
+			}
 		}
 
 		if (aesMode == AES_MODE_CBC) {
@@ -200,7 +212,7 @@ int aesEncrypt(const unsigned char* in, int inLen,
 int aesDecrypt(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
 	unsigned char* out,
-	int aesMode,
+	int aesMode, int paddingMode,
 	int nk, int nr) {
 	int resultLen = 0;
 	// 分配内存
@@ -249,9 +261,18 @@ int aesDecrypt(const unsigned char* in, int inLen,
 		}
 
 		for (int i = 0; i < 16; ++i) {
+			if (paddingMode != AES_PADDING_MODE_NONE && index == inLen - 16) {
+				if (paddingMode == AES_PADDING_MODE_PKCS7) {
+					if ((16 - i) == state[i & 0x03][i >> 2]) {
+						break;
+					}
+				} else {
+					return 0;
+				}
+			}
 			out[index + i] = state[i & 0x03][i >> 2];
+			++resultLen;
 		}
-		resultLen += 16;
 	}
 	return resultLen;
 }

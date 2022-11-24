@@ -207,6 +207,38 @@ void aesTest() {
 		printf("%02X ", (int)aesOut[i]);
 	}
 	cout << endl;
+
+#ifdef USE_OPENSSL
+	ectx = EVP_CIPHER_CTX_new();
+	EVP_CipherInit_ex(ectx, EVP_aes_256_cbc(), NULL, aesKey, aesIv, AES_ENCRYPT);
+	EVP_CIPHER_CTX_set_padding(ectx, EVP_PADDING_PKCS7);
+	opensslTotalLen = 0;
+	decryptLen = 0;
+	EVP_CipherUpdate(ectx, opensslAesOut, &decryptLen, aesMsg, sizeof(aesMsg));
+	opensslTotalLen += decryptLen;
+	decryptLen = 0;
+	EVP_CipherFinal_ex(ectx, opensslAesOut + opensslTotalLen, &decryptLen);
+	opensslTotalLen += decryptLen;
+	EVP_CIPHER_CTX_free(ectx);
+	cout << "opensslAes256cbc_pkcs7: ";
+	for (int i = 0; i < opensslTotalLen; ++i) {
+		printf("%02X ", (int)opensslAesOut[i]);
+	}
+	cout << endl;
+#endif
+
+	totalLen = aesAlgorithm(
+		aesMsg, sizeof(aesMsg),
+		aesKey, aesIv,
+		aesOut,
+		AES_MODE_CBC, AES_KEY_LEN_256, AES_PADDING_MODE_PKCS7,
+		AES_ENC_ENCRYPT
+	);
+	cout << "       aes256cbc_pkcs7: ";
+	for (int i = 0; i < totalLen; ++i) {
+		printf("%02X ", (int)aesOut[i]);
+	}
+	cout << endl;
 }
 
 int main() {
