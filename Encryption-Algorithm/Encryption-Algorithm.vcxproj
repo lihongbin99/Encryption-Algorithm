@@ -134,6 +134,7 @@
     <ClCompile Include="Encryption-Algorithm.cpp" />
     <ClCompile Include="encrypt\hmac.cpp" />
     <ClCompile Include="encrypt\kdf.cpp" />
+    <ClCompile Include="encrypt\md.cpp" />
     <ClCompile Include="encrypt\sha.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -141,6 +142,7 @@
     <ClInclude Include="encrypt\base.h" />
     <ClInclude Include="encrypt\hmac.h" />
     <ClInclude Include="encrypt\kdf.h" />
+    <ClInclude Include="encrypt\md.h" />
     <ClInclude Include="encrypt\sha.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

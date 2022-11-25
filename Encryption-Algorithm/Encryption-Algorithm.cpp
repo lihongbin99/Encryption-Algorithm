@@ -2,22 +2,50 @@
 // #define USE_OPENSSL
 
 #ifdef USE_OPENSSL
+#include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 #include <openssl/hmac.h>
 #endif
 
+#include "encrypt/md.h"
 #include "encrypt/sha.h"
 #include "encrypt/hmac.h"
 #include "encrypt/kdf.h"
 #include "encrypt/aes.h"
+
+void md5Test() {
+	const unsigned char message[] = "Hello World!";
+	const int messageLen = sizeof(message) - 1;
+
+#ifdef USE_OPENSSL
+	unsigned char opensslMD5Out[16];
+	MD5_CTX ctx;
+	MD5_Init(&ctx);
+	MD5_Update(&ctx, message, messageLen);
+	MD5_Final(opensslMD5Out, &ctx);
+	printf(" md5Encode: ");
+	for (int i = 0; i < sizeof(opensslMD5Out); ++i) {
+		printf("%02X ", (int)opensslMD5Out[i]);
+	}
+	printf("\n");
+#endif
+
+	unsigned char md5[16];
+	md5Encode(message, messageLen, md5);
+	printf("       md5: ");
+	for (int i = 0; i < sizeof(md5); ++i) {
+		printf("%02X ", (int)md5[i]);
+	}
+	printf("\n");
+}
 
 void sha1Test() {
 	const unsigned char message[] = "Hello World!";
 	const int messageLen = sizeof(message) - 1;
 	
 #ifdef USE_OPENSSL
-	unsigned char opensslSha1Out[20];
+	unsigned char opensslSha1Out[SHA1_OUTLEN];
 	SHA_CTX ctx;
 	SHA1_Init(&ctx);
 	SHA1_Update(&ctx, message, messageLen);
@@ -29,11 +57,106 @@ void sha1Test() {
 	printf("\n");
 #endif
 
-	unsigned char sha1[20];
+	unsigned char sha1[SHA1_OUTLEN];
 	sha1Encode(message, messageLen, sha1);
 	printf("       sha1: ");
 	for (int i = 0; i < sizeof(sha1); ++i) {
 		printf("%02X ", (int)sha1[i]);
+	}
+	printf("\n");
+}
+
+void sha2Test() {
+	const unsigned char message[666] = "Hello World!";
+	const int messageLen = sizeof(message) - 1;
+
+#ifdef USE_OPENSSL
+	unsigned char opensslSha224Out[SHA224_OUTLEN];
+	SHA256_CTX ctx224;
+	SHA224_Init(&ctx224);
+	SHA224_Update(&ctx224, message, messageLen);
+	SHA224_Final(opensslSha224Out, &ctx224);
+	printf("opensslSha224: ");
+	for (int i = 0; i < sizeof(opensslSha224Out); ++i) {
+		printf("%02X ", (int)opensslSha224Out[i]);
+	}
+	printf("\n");
+#endif
+
+	unsigned char sha224[SHA224_OUTLEN];
+	sha224Encode(message, messageLen, sha224);
+	printf("       sha224: ");
+	for (int i = 0; i < sizeof(sha224); ++i) {
+		printf("%02X ", (int)sha224[i]);
+	}
+	printf("\n");
+
+	/**************************************************************************************/
+
+#ifdef USE_OPENSSL
+	unsigned char opensslSha256Out[SHA256_OUTLEN];
+	SHA256_CTX ctx256;
+	SHA256_Init(&ctx256);
+	SHA256_Update(&ctx256, message, messageLen);
+	SHA256_Final(opensslSha256Out, &ctx256);
+	printf("opensslSha256: ");
+	for (int i = 0; i < sizeof(opensslSha256Out); ++i) {
+		printf("%02X ", (int)opensslSha256Out[i]);
+	}
+	printf("\n");
+#endif
+
+	unsigned char sha256[SHA256_OUTLEN];
+	sha256Encode(message, messageLen, sha256);
+	printf("       sha256: ");
+	for (int i = 0; i < sizeof(sha256); ++i) {
+		printf("%02X ", (int)sha256[i]);
+	}
+	printf("\n");
+
+	/**************************************************************************************/
+
+#ifdef USE_OPENSSL
+	unsigned char opensslSha384Out[SHA384_OUTLEN];
+	SHA512_CTX ctx384;
+	SHA384_Init(&ctx384);
+	SHA384_Update(&ctx384, message, messageLen);
+	SHA384_Final(opensslSha384Out, &ctx384);
+	printf("opensslSha384: ");
+	for (int i = 0; i < sizeof(opensslSha384Out); ++i) {
+		printf("%02X ", (int)opensslSha384Out[i]);
+	}
+	printf("\n");
+#endif
+
+	unsigned char sha384[SHA384_OUTLEN];
+	sha384Encode(message, messageLen, sha384);
+	printf("       sha384: ");
+	for (int i = 0; i < sizeof(sha384); ++i) {
+		printf("%02X ", (int)sha384[i]);
+	}
+	printf("\n");
+
+	/**************************************************************************************/
+
+#ifdef USE_OPENSSL
+	unsigned char opensslSha512Out[SHA512_OUTLEN];
+	SHA512_CTX ctx512;
+	SHA512_Init(&ctx512);
+	SHA512_Update(&ctx512, message, messageLen);
+	SHA512_Final(opensslSha512Out, &ctx512);
+	printf("opensslSha512: ");
+	for (int i = 0; i < sizeof(opensslSha512Out); ++i) {
+		printf("%02X ", (int)opensslSha512Out[i]);
+	}
+	printf("\n");
+#endif
+
+	unsigned char sha512[SHA512_OUTLEN];
+	sha512Encode(message, messageLen, sha512);
+	printf("       sha512: ");
+	for (int i = 0; i < sizeof(sha512); ++i) {
+		printf("%02X ", (int)sha512[i]);
 	}
 	printf("\n");
 }
@@ -242,7 +365,9 @@ void aesTest() {
 }
 
 int main() {
+	md5Test();
 	sha1Test();
+	sha2Test();
 	hmacTest();
 	kdfTest();
 	aesTest();

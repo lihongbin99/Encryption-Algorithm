@@ -2,8 +2,17 @@
 
 #include "base.h"
 
-#define SHA1_GROUP_BIT 512
-#define SHA1_GROUP_LEN (SHA1_GROUP_BIT / 8)
-#define SHA1_LAST_BIT  64
-#define SHA1_LAST_LEN  (SHA1_LAST_BIT / 8)
+#define SHA1_OUTLEN 20
 void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out);
+
+#define SHA224_OUTLEN 28
+void sha224Encode(const unsigned char* message, int messageLen, unsigned char* out);
+
+#define SHA256_OUTLEN 32
+void sha256Encode(const unsigned char* message, int messageLen, unsigned char* out);
+
+#define SHA384_OUTLEN 48
+void sha384Encode(const unsigned char* message, int messageLen, unsigned char* out);
+
+#define SHA512_OUTLEN 64
+void sha512Encode(const unsigned char* message, int messageLen, unsigned char* out);

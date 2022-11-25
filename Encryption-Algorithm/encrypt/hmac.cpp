@@ -1,8 +1,10 @@
 #include "hmac.h"
 
+#define SHA1_GROUP_LEN 64
+
 void hmacSha1(const unsigned char* key, int keyLen, const unsigned char* message, int messageLen, unsigned char* out) {
 	// Моід Key
-	unsigned char hmacKey[SHA1_GROUP_LEN];
+	unsigned char hmacKey[64];
 	if (keyLen > SHA1_GROUP_LEN) {
 		sha1Encode(key, keyLen, hmacKey);
 		keyLen = 20;
