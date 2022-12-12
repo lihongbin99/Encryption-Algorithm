@@ -1,11 +1,12 @@
 ﻿
-// #define USE_OPENSSL
+#define USE_OPENSSL
 
 #ifdef USE_OPENSSL
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 #include <openssl/hmac.h>
+#include <openssl/rsa.h>
 #endif
 
 #include "encrypt/md.h"
@@ -15,8 +16,14 @@
 #include "encrypt/aes.h"
 
 void md5Test() {
-	const unsigned char message[] = "Hello World!";
-	const int messageLen = sizeof(message) - 1;
+	// const unsigned char message[13520] = "Hello World!";
+	// const int messageLen = sizeof(message) - 1;
+
+	unsigned char message[55];
+	const int messageLen = sizeof(message);
+	for (int i = 0; i < sizeof(message); ++i) {
+		message[i] = i;
+	}
 
 #ifdef USE_OPENSSL
 	unsigned char opensslMD5Out[16];
@@ -365,11 +372,14 @@ void aesTest() {
 }
 
 int main() {
-	md5Test();
+	unsigned int arr[4]{ 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
+
+	// md5Test();
 	sha1Test();
-	sha2Test();
-	hmacTest();
-	kdfTest();
-	aesTest();
+	// sha2Test();
+	// hmacTest();
+	// kdfTest();
+	// aesTest();
+
 	return EXIT_SUCCESS;
 }

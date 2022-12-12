@@ -3,7 +3,7 @@
 #include "base.h"
 
 #define SHA1_OUTLEN 20
-void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out);
+void sha1Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out);
 
 #define SHA224_OUTLEN 28
 void sha224Encode(const unsigned char* message, int messageLen, unsigned char* out);

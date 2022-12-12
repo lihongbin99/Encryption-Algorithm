@@ -1,6 +1,22 @@
 #include "sha.h"
 
-void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out) {
+#define convertIntEndian(num) (\
+	((num >> 24) & 0x000000FF) | \
+	((num >>  8) & 0x0000FF00) | \
+	((num <<  8) & 0x00FF0000) | \
+	((num << 24) & 0xFF000000) )
+
+#define convertLongEndian(num) (\
+	((num >> 56) & 0x00000000000000FF) | \
+	((num >> 40) & 0x000000000000FF00) | \
+	((num >> 24) & 0x0000000000FF0000) | \
+	((num >>  8) & 0x00000000FF000000) | \
+	((num <<  8) & 0x000000FF00000000) | \
+	((num << 24) & 0x0000FF0000000000) | \
+	((num << 40) & 0x00FF000000000000) | \
+	((num << 56) & 0xFF00000000000000) )
+
+void sha1Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out) {
 	// 计算需要填充的数量
 	int paddingCount = 64 - (messageLen % 64);
 	paddingCount = paddingCount > 8 ? paddingCount : paddingCount + 64;
@@ -14,6 +30,12 @@ void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out
 	unsigned int D = 0x10325476;
 	unsigned int E = 0xC3D2E1F0;
 
+	cout << "填充前" << endl;
+	for (int i = 0; i < messageLen; ++i) {
+		printf("%02X ", message[i]);
+	}
+	cout << endl;
+
 	unsigned char buf[64];
 	unsigned char w[80 * 32]; // 把 512bit 分为 16dword 再扩充为 80dword
 	bool padding1 = true;
@@ -22,15 +44,7 @@ void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out
 			if (index + i < messageLen) {
 				buf[i] = message[index + i];
 			} else if (index + i == dataLen - 8) {
-				unsigned long long lastLen = messageLen * 8;
-				*((unsigned long long*)(buf + i)) = ((lastLen << 56) & 0xFF00000000000000) \
-					| ((lastLen << 40) & 0x00FF000000000000) \
-					| ((lastLen << 24) & 0x0000FF0000000000) \
-					| ((lastLen << 8) & 0x000000FF00000000) \
-					| ((lastLen >> 8) & 0x00000000FF000000) \
-					| ((lastLen >> 24) & 0x0000000000FF0000) \
-					| ((lastLen >> 40) & 0x000000000000FF00) \
-					| ((lastLen >> 56) & 0x00000000000000FF);
+				*((unsigned long long*)(buf + i)) = convertLongEndian(messageLen * 8);
 				break;
 			} else if (padding1) {
 				buf[i] = 0x80;
@@ -40,19 +54,37 @@ void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out
 			}
 		}
 
+		cout << "填充后: " << endl;
+		for (int row = 0; row < 4; ++row) {
+			for (int clounm = 0; clounm < 16; clounm++) {
+				printf("%02X ", buf[row * 16 + clounm]);
+			}
+			cout << endl;
+		}
+		cout << endl;
+
 		// 数据扩充
 		unsigned int* intPtr = (unsigned int*)w;
 		for (int wi = 0; wi < 80; wi++) {
 			if (wi < 16) {
-				*(intPtr + wi) = ((((unsigned int*)buf)[wi]) >> 24) \
-					| (((((unsigned int*)buf)[wi]) >> 8) & 0x0000FF00) \
-					| (((((unsigned int*)buf)[wi]) << 8) & 0x00FF0000) \
-					| (((((unsigned int*)buf)[wi]) << 24) & 0xFF000000);
+				*(intPtr + wi) = ((unsigned int*)buf)[wi];
 			} else {
-				unsigned int num = intPtr[wi - 3] ^ intPtr[wi - 8] ^ intPtr[wi - 14] ^ intPtr[wi - 16];
-				*(intPtr + wi) = num << 1 | num >> 31;
+				unsigned int num = convertIntEndian(intPtr[wi - 3]) ^ \
+					convertIntEndian(intPtr[wi -  8]) ^ \
+					convertIntEndian(intPtr[wi - 14]) ^ \
+					convertIntEndian(intPtr[wi - 16]);
+				*(intPtr + wi) = convertIntEndian((num << 1 | num >> 31));
 			}
 		}
+
+		cout << "扩充后: " << endl;
+		for (int row = 0; row < 20; ++row) {
+			for (int clounm = 0; clounm < 16; clounm++) {
+				printf("%02X ", w[row * 16 + clounm]);
+			}
+			cout << endl;
+		}
+		cout << endl;
 
 		unsigned int a = A;
 		unsigned int b = B;
@@ -79,13 +111,44 @@ void sha1Encode(const unsigned char* message, int messageLen, unsigned char* out
 				f = b ^ c ^ d;
 				k = 0xCA62C1D6;
 			}
-			unsigned int t = (a << 5 | a >> 27) + f + e + k + intPtr[i];
+
+			printf("第 %d 次循环: a: %08X, b: %08X, c: %08X, d: %08X, e: %08X\n", i, a, b, c, d, e);
+			printf("f: %08X, k: %08X, w[i]: %08X\n", f, k, convertIntEndian(intPtr[i]));
+
+			unsigned tj = a;
+			tj = tj << 5 | tj >> 27;
+			printf("步骤3: %08X << 5 = %08X", a, tj);
+			tj += f;
+			printf(" + %08X = %08X", f, tj);
+			tj += e;
+			printf(" + %08X = %08X", e, tj);
+			tj += k;
+			printf(" + %08X = %08X", k, tj);
+			tj += convertIntEndian(intPtr[i]);
+			printf(" + %08X = %08X\n", convertIntEndian(intPtr[i]), tj);
+			e = tj;
+
+			printf("步骤4: b = %08X << 30 = ", b);
+			b = b << 30 | b >> 2;
+			printf("%08X\n", b);
+
+			unsigned int te = e;
 			e = d;
 			d = c;
-			c = b << 30 | b >> 2;
+			c = b;
 			b = a;
-			a = t;
+			a = te;
+
+			printf("交换数据: a: %08X, b: %08X, c: %08X, d: %08X, e: %08X\n", a, b, c, d, e);
+
+			printf("\n");
 		}
+
+		printf("步骤6: %08X + %08X = %08X\n", A, a, A + a);
+		printf("步骤6: %08X + %08X = %08X\n", B, b, B + b);
+		printf("步骤6: %08X + %08X = %08X\n", C, c, C + c);
+		printf("步骤6: %08X + %08X = %08X\n", D, d, D + d);
+		printf("步骤6: %08X + %08X = %08X\n", E, e, E + e);
 
 		// 最终处理
 		A += a;
