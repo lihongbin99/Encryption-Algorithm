@@ -30,12 +30,6 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 	unsigned int D = 0x10325476;
 	unsigned int E = 0xC3D2E1F0;
 
-	cout << "填充前" << endl;
-	for (int i = 0; i < messageLen; ++i) {
-		printf("%02X ", message[i]);
-	}
-	cout << endl;
-
 	unsigned char buf[64];
 	unsigned char w[80 * 32]; // 把 512bit 分为 16dword 再扩充为 80dword
 	bool padding1 = true;
@@ -54,15 +48,6 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 			}
 		}
 
-		cout << "填充后: " << endl;
-		for (int row = 0; row < 4; ++row) {
-			for (int clounm = 0; clounm < 16; clounm++) {
-				printf("%02X ", buf[row * 16 + clounm]);
-			}
-			cout << endl;
-		}
-		cout << endl;
-
 		// 数据扩充
 		unsigned int* intPtr = (unsigned int*)w;
 		for (int wi = 0; wi < 80; wi++) {
@@ -76,15 +61,6 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 				*(intPtr + wi) = convertIntEndian((num << 1 | num >> 31));
 			}
 		}
-
-		cout << "扩充后: " << endl;
-		for (int row = 0; row < 20; ++row) {
-			for (int clounm = 0; clounm < 16; clounm++) {
-				printf("%02X ", w[row * 16 + clounm]);
-			}
-			cout << endl;
-		}
-		cout << endl;
 
 		unsigned int a = A;
 		unsigned int b = B;
@@ -112,25 +88,15 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 				k = 0xCA62C1D6;
 			}
 
-			printf("第 %d 次循环: a: %08X, b: %08X, c: %08X, d: %08X, e: %08X\n", i, a, b, c, d, e);
-			printf("f: %08X, k: %08X, w[i]: %08X\n", f, k, convertIntEndian(intPtr[i]));
-
 			unsigned tj = a;
 			tj = tj << 5 | tj >> 27;
-			printf("步骤3: %08X << 5 = %08X", a, tj);
 			tj += f;
-			printf(" + %08X = %08X", f, tj);
 			tj += e;
-			printf(" + %08X = %08X", e, tj);
 			tj += k;
-			printf(" + %08X = %08X", k, tj);
 			tj += convertIntEndian(intPtr[i]);
-			printf(" + %08X = %08X\n", convertIntEndian(intPtr[i]), tj);
 			e = tj;
 
-			printf("步骤4: b = %08X << 30 = ", b);
 			b = b << 30 | b >> 2;
-			printf("%08X\n", b);
 
 			unsigned int te = e;
 			e = d;
@@ -138,17 +104,7 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 			c = b;
 			b = a;
 			a = te;
-
-			printf("交换数据: a: %08X, b: %08X, c: %08X, d: %08X, e: %08X\n", a, b, c, d, e);
-
-			printf("\n");
 		}
-
-		printf("步骤6: %08X + %08X = %08X\n", A, a, A + a);
-		printf("步骤6: %08X + %08X = %08X\n", B, b, B + b);
-		printf("步骤6: %08X + %08X = %08X\n", C, c, C + c);
-		printf("步骤6: %08X + %08X = %08X\n", D, d, D + d);
-		printf("步骤6: %08X + %08X = %08X\n", E, e, E + e);
 
 		// 最终处理
 		A += a;

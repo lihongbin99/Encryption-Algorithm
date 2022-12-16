@@ -1,4 +1,7 @@
-﻿
+﻿#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winsock2.h>
+
 #define USE_OPENSSL
 
 #ifdef USE_OPENSSL
@@ -16,14 +19,8 @@
 #include "encrypt/aes.h"
 
 void md5Test() {
-	// const unsigned char message[13520] = "Hello World!";
-	// const int messageLen = sizeof(message) - 1;
-
-	unsigned char message[55];
-	const int messageLen = sizeof(message);
-	for (int i = 0; i < sizeof(message); ++i) {
-		message[i] = i;
-	}
+	const unsigned char message[13520] = "Hello World!";
+	const int messageLen = sizeof(message) - 1;
 
 #ifdef USE_OPENSSL
 	unsigned char opensslMD5Out[16];
@@ -372,14 +369,19 @@ void aesTest() {
 }
 
 int main() {
-	unsigned int arr[4]{ 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
 
-	// md5Test();
+	md5Test();
+	cout << endl;
 	sha1Test();
-	// sha2Test();
-	// hmacTest();
-	// kdfTest();
-	// aesTest();
+	cout << endl;
+	sha2Test();
+	cout << endl;
+	hmacTest();
+	cout << endl;
+	kdfTest();
+	cout << endl;
+	aesTest();
+	cout << endl;
 
 	return EXIT_SUCCESS;
 }
