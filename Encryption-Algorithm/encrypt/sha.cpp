@@ -38,7 +38,7 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 			if (index + i < messageLen) {
 				buf[i] = message[index + i];
 			} else if (index + i == dataLen - 8) {
-				*((unsigned long long*)(buf + i)) = convertLongEndian(messageLen * 8);
+				*((unsigned long long*)(buf + i)) = convertLongEndian(messageLen << 3);
 				break;
 			} else if (padding1) {
 				buf[i] = 0x80;
@@ -140,7 +140,8 @@ void doSha256Encode(const unsigned char* message, unsigned long long messageLen,
 		h5 = 0x68581511;
 		h6 = 0x64f98fa7;
 		h7 = 0xbefa4fa4;
-	} else if (bit == 256) {
+	}
+	else if (bit == 256) {
 		h0 = 0x6a09e667;
 		h1 = 0xbb67ae85;
 		h2 = 0x3c6ef372;
@@ -149,7 +150,8 @@ void doSha256Encode(const unsigned char* message, unsigned long long messageLen,
 		h5 = 0x9b05688c;
 		h6 = 0x1f83d9ab;
 		h7 = 0x5be0cd19;
-	} else {
+	}
+	else {
 		return;
 	}
 
@@ -179,7 +181,7 @@ void doSha256Encode(const unsigned char* message, unsigned long long messageLen,
 			if (index + i < messageLen) {
 				buf[i] = message[index + i];
 			} else if (index + i == dataLen - 8) {
-				*((unsigned long long*)(buf + i)) = convertLongEndian(messageLen * 8);
+				*((unsigned long long*)(buf + i)) = convertLongEndian(messageLen << 3);
 				break;
 			} else if (padding1) {
 				buf[i] = 0x80;
@@ -282,7 +284,8 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 		h5 = 0x8eb44a8768581511;
 		h6 = 0xdb0c2e0d64f98fa7;
 		h7 = 0x47b5481dbefa4fa4;
-	} else if (bit == 512) {
+	}
+	else if (bit == 512) {
 		h0 = 0x6a09e667f3bcc908;
 		h1 = 0xbb67ae8584caa73b;
 		h2 = 0x3c6ef372fe94f82b;
@@ -291,7 +294,8 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 		h5 = 0x9b05688c2b3e6c1f;
 		h6 = 0x1f83d9abfb41bd6b;
 		h7 = 0x5be0cd19137e2179;
-	} else {
+	}
+	else {
 		return;
 	}
 
@@ -329,9 +333,8 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 			if (index + i < messageLen) {
 				buf[i] = message[index + i];
 			} else if (index + i == dataLen - 16) {
-				// TODO 这里的消息长度有问题
-				*((unsigned long long*)(buf + i + 0)) = 0;
-				*((unsigned long long*)(buf + i + 8)) = convertLongEndian(messageLen * 8);
+				*((unsigned long long*)(buf + i + 0)) = convertLongEndian(((messageLen >> 61) & 0x7));
+				*((unsigned long long*)(buf + i + 8)) = convertLongEndian(  messageLen <<  3);
 				break;
 			} else if (padding1) {
 				buf[i] = 0x80;

@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <winsock2.h>
 
-#define USE_OPENSSL
+// #define USE_OPENSSL
 
 #ifdef USE_OPENSSL
 #include <openssl/md5.h>
