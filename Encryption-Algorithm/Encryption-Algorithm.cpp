@@ -71,7 +71,7 @@ void sha1Test() {
 }
 
 void sha2Test() {
-	const unsigned char message[666] = "Hello World!";
+	const unsigned char message[] = "Hello World!";
 	const int messageLen = sizeof(message) - 1;
 
 #ifdef USE_OPENSSL
@@ -369,7 +369,6 @@ void aesTest() {
 }
 
 int main() {
-
 	md5Test();
 	cout << endl;
 	sha1Test();

@@ -114,24 +114,24 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 		E += e;
 	}
 
-	*((unsigned int*)out + 0) = (A >> 24 & 0x000000FF) | (A >> 8 & 0x0000FF00) | (A << 8 & 0x00FF0000) | (A << 24 & 0xFF000000);
-	*((unsigned int*)out + 1) = (B >> 24 & 0x000000FF) | (B >> 8 & 0x0000FF00) | (B << 8 & 0x00FF0000) | (B << 24 & 0xFF000000);
-	*((unsigned int*)out + 2) = (C >> 24 & 0x000000FF) | (C >> 8 & 0x0000FF00) | (C << 8 & 0x00FF0000) | (C << 24 & 0xFF000000);
-	*((unsigned int*)out + 3) = (D >> 24 & 0x000000FF) | (D >> 8 & 0x0000FF00) | (D << 8 & 0x00FF0000) | (D << 24 & 0xFF000000);
-	*((unsigned int*)out + 4) = (E >> 24 & 0x000000FF) | (E >> 8 & 0x0000FF00) | (E << 8 & 0x00FF0000) | (E << 24 & 0xFF000000);
+	*((unsigned int*)out + 0) = convertIntEndian(A);
+	*((unsigned int*)out + 1) = convertIntEndian(B);
+	*((unsigned int*)out + 2) = convertIntEndian(C);
+	*((unsigned int*)out + 3) = convertIntEndian(D);
+	*((unsigned int*)out + 4) = convertIntEndian(E);
 }
 
-void doSha256Encode(const unsigned char* message, int messageLen, unsigned char* out, bool is256) {
-	unsigned int h0 = 0x6a09e667;
-	unsigned int h1 = 0xbb67ae85;
-	unsigned int h2 = 0x3c6ef372;
-	unsigned int h3 = 0xa54ff53a;
-	unsigned int h4 = 0x510e527f;
-	unsigned int h5 = 0x9b05688c;
-	unsigned int h6 = 0x1f83d9ab;
-	unsigned int h7 = 0x5be0cd19;
+void doSha256Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out, int bit) {
+	unsigned int h0;
+	unsigned int h1;
+	unsigned int h2;
+	unsigned int h3;
+	unsigned int h4;
+	unsigned int h5;
+	unsigned int h6;
+	unsigned int h7;
 
-	if (!is256) {
+	if (bit == 224) {
 		h0 = 0xc1059ed8;
 		h1 = 0x367cd507;
 		h2 = 0x3070dd17;
@@ -140,6 +140,17 @@ void doSha256Encode(const unsigned char* message, int messageLen, unsigned char*
 		h5 = 0x68581511;
 		h6 = 0x64f98fa7;
 		h7 = 0xbefa4fa4;
+	} else if (bit == 256) {
+		h0 = 0x6a09e667;
+		h1 = 0xbb67ae85;
+		h2 = 0x3c6ef372;
+		h3 = 0xa54ff53a;
+		h4 = 0x510e527f;
+		h5 = 0x9b05688c;
+		h6 = 0x1f83d9ab;
+		h7 = 0x5be0cd19;
+	} else {
+		return;
 	}
 
 	unsigned int k[64] = {
@@ -167,41 +178,29 @@ void doSha256Encode(const unsigned char* message, int messageLen, unsigned char*
 		for (int i = 0; i < 64; ++i) {
 			if (index + i < messageLen) {
 				buf[i] = message[index + i];
-			}
-			else if (index + i == dataLen - 8) {
-				unsigned long long lastLen = messageLen * 8;
-				*((unsigned long long*)(buf + i)) = ((lastLen << 56) & 0xFF00000000000000) \
-					| ((lastLen << 40) & 0x00FF000000000000) \
-					| ((lastLen << 24) & 0x0000FF0000000000) \
-					| ((lastLen << 8) & 0x000000FF00000000) \
-					| ((lastLen >> 8) & 0x00000000FF000000) \
-					| ((lastLen >> 24) & 0x0000000000FF0000) \
-					| ((lastLen >> 40) & 0x000000000000FF00) \
-					| ((lastLen >> 56) & 0x00000000000000FF);
+			} else if (index + i == dataLen - 8) {
+				*((unsigned long long*)(buf + i)) = convertLongEndian(messageLen * 8);
 				break;
-			}
-			else if (padding1) {
+			} else if (padding1) {
 				buf[i] = 0x80;
 				padding1 = false;
-			}
-			else {
+			} else {
 				buf[i] = 0;
 			}
 		}
 
-		// 数据填充
 		unsigned int* intPtr = (unsigned int*)w;
 		for (int wi = 0; wi < 64; wi++) {
 			if (wi < 16) {
-				*(intPtr + wi) = ((((unsigned int*)buf)[wi]) >> 24) \
-					| (((((unsigned int*)buf)[wi]) >> 8) & 0x0000FF00) \
-					| (((((unsigned int*)buf)[wi]) << 8) & 0x00FF0000) \
-					| (((((unsigned int*)buf)[wi]) << 24) & 0xFF000000);
-			}
-			else {
-				unsigned int s0 = ((intPtr[wi - 15] >> 7) | (intPtr[wi - 15] << 25)) ^ ((intPtr[wi - 15] >> 18) | (intPtr[wi - 15] << 14)) ^ (intPtr[wi - 15] >> 3);
-				unsigned int s1 = ((intPtr[wi - 2] >> 17) | (intPtr[wi - 2] << 15)) ^ ((intPtr[wi - 2] >> 19) | (intPtr[wi - 2] << 13)) ^ (intPtr[wi - 2] >> 10);
-				*(intPtr + wi) = intPtr[wi - 16] + s0 + intPtr[wi - 7] + s1;
+				*(intPtr + wi) = ((unsigned int*)buf)[wi];
+			} else {
+				unsigned int s0 = convertIntEndian(intPtr[wi - 15]);
+				unsigned int s1 = convertIntEndian(intPtr[wi -  2]);
+				unsigned int s2 = convertIntEndian(intPtr[wi - 16]);
+				unsigned int s3 = convertIntEndian(intPtr[wi -  7]);
+				s0 = ((s0 >>  7) | (s0 << 25)) ^ ((s0 >> 18) | (s0 << 14)) ^ (s0 >>  3);
+				s1 = ((s1 >> 17) | (s1 << 15)) ^ ((s1 >> 19) | (s1 << 13)) ^ (s1 >> 10);
+				*(intPtr + wi) = convertIntEndian((s0 + s1 + s2 + s3));
 			}
 		}
 
@@ -219,7 +218,7 @@ void doSha256Encode(const unsigned char* message, int messageLen, unsigned char*
 		for (int i = 0; i < 64; ++i) {
 			unsigned int S1 = ((e >> 6) | (e << 26)) ^ ((e >> 11) | (e << 21)) ^ ((e >> 25) | (e << 7));
 			unsigned int ch = (e & f) ^ ((~e) & g);
-			temp1 = h + S1 + ch + k[i] + intPtr[i];
+			temp1 = h + S1 + ch + k[i] + convertIntEndian(intPtr[i]);
 			unsigned int S0 = ((a >> 2) | (a << 30)) ^ ((a >> 13) | (a << 19)) ^ ((a >> 22) | (a << 10));
 			unsigned int maj = (a & b) ^ (a & c) ^ (b & c);
 			temp2 = S0 + maj;
@@ -245,36 +244,36 @@ void doSha256Encode(const unsigned char* message, int messageLen, unsigned char*
 		h7 += h;
 	}
 
-	*((unsigned int*)out + 0) = (h0 >> 24 & 0x000000FF) | (h0 >> 8 & 0x0000FF00) | (h0 << 8 & 0x00FF0000) | (h0 << 24 & 0xFF000000);
-	*((unsigned int*)out + 1) = (h1 >> 24 & 0x000000FF) | (h1 >> 8 & 0x0000FF00) | (h1 << 8 & 0x00FF0000) | (h1 << 24 & 0xFF000000);
-	*((unsigned int*)out + 2) = (h2 >> 24 & 0x000000FF) | (h2 >> 8 & 0x0000FF00) | (h2 << 8 & 0x00FF0000) | (h2 << 24 & 0xFF000000);
-	*((unsigned int*)out + 3) = (h3 >> 24 & 0x000000FF) | (h3 >> 8 & 0x0000FF00) | (h3 << 8 & 0x00FF0000) | (h3 << 24 & 0xFF000000);
-	*((unsigned int*)out + 4) = (h4 >> 24 & 0x000000FF) | (h4 >> 8 & 0x0000FF00) | (h4 << 8 & 0x00FF0000) | (h4 << 24 & 0xFF000000);
-	*((unsigned int*)out + 5) = (h5 >> 24 & 0x000000FF) | (h5 >> 8 & 0x0000FF00) | (h5 << 8 & 0x00FF0000) | (h5 << 24 & 0xFF000000);
-	*((unsigned int*)out + 6) = (h6 >> 24 & 0x000000FF) | (h6 >> 8 & 0x0000FF00) | (h6 << 8 & 0x00FF0000) | (h6 << 24 & 0xFF000000);
-	if (is256) {
-		*((unsigned int*)out + 7) = (h7 >> 24 & 0x000000FF) | (h7 >> 8 & 0x0000FF00) | (h7 << 8 & 0x00FF0000) | (h7 << 24 & 0xFF000000);
+	*((unsigned int*)out + 0) = convertIntEndian(h0);
+	*((unsigned int*)out + 1) = convertIntEndian(h1);
+	*((unsigned int*)out + 2) = convertIntEndian(h2);
+	*((unsigned int*)out + 3) = convertIntEndian(h3);
+	*((unsigned int*)out + 4) = convertIntEndian(h4);
+	*((unsigned int*)out + 5) = convertIntEndian(h5);
+	*((unsigned int*)out + 6) = convertIntEndian(h6);
+	if (bit == 256) {
+		*((unsigned int*)out + 7) = convertIntEndian(h7);
 	}
 }
-void sha224Encode(const unsigned char* message, int messageLen, unsigned char* out) {
-	doSha256Encode(message, messageLen, out, false);
+void sha224Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out) {
+	doSha256Encode(message, messageLen, out, 224);
 }
 
-void sha256Encode(const unsigned char* message, int messageLen, unsigned char* out) {
-	doSha256Encode(message, messageLen, out, true);
+void sha256Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out) {
+	doSha256Encode(message, messageLen, out, 256);
 }
 
-void doSha512Encode(const unsigned char* message, int messageLen, unsigned char* out, bool is512) {
-	unsigned long long h0 = 0x6a09e667f3bcc908;
-	unsigned long long h1 = 0xbb67ae8584caa73b;
-	unsigned long long h2 = 0x3c6ef372fe94f82b;
-	unsigned long long h3 = 0xa54ff53a5f1d36f1;
-	unsigned long long h4 = 0x510e527fade682d1;
-	unsigned long long h5 = 0x9b05688c2b3e6c1f;
-	unsigned long long h6 = 0x1f83d9abfb41bd6b;
-	unsigned long long h7 = 0x5be0cd19137e2179;
+void doSha512Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out, int bit) {
+	unsigned long long h0;
+	unsigned long long h1;
+	unsigned long long h2;
+	unsigned long long h3;
+	unsigned long long h4;
+	unsigned long long h5;
+	unsigned long long h6;
+	unsigned long long h7;
 
-	if (!is512) {
+	if (bit == 384) {
 		h0 = 0xcbbb9d5dc1059ed8;
 		h1 = 0x629a292a367cd507;
 		h2 = 0x9159015a3070dd17;
@@ -283,6 +282,17 @@ void doSha512Encode(const unsigned char* message, int messageLen, unsigned char*
 		h5 = 0x8eb44a8768581511;
 		h6 = 0xdb0c2e0d64f98fa7;
 		h7 = 0x47b5481dbefa4fa4;
+	} else if (bit == 512) {
+		h0 = 0x6a09e667f3bcc908;
+		h1 = 0xbb67ae8584caa73b;
+		h2 = 0x3c6ef372fe94f82b;
+		h3 = 0xa54ff53a5f1d36f1;
+		h4 = 0x510e527fade682d1;
+		h5 = 0x9b05688c2b3e6c1f;
+		h6 = 0x1f83d9abfb41bd6b;
+		h7 = 0x5be0cd19137e2179;
+	} else {
+		return;
 	}
 
 	unsigned long long k[80] = {
@@ -318,26 +328,15 @@ void doSha512Encode(const unsigned char* message, int messageLen, unsigned char*
 		for (int i = 0; i < 128; ++i) {
 			if (index + i < messageLen) {
 				buf[i] = message[index + i];
-			}
-			else if (index + i == dataLen - 16) {
-				// TODO 消息这里有问题
+			} else if (index + i == dataLen - 16) {
+				// TODO 这里的消息长度有问题
 				*((unsigned long long*)(buf + i + 0)) = 0;
-				unsigned long long lastLen = messageLen * 8;
-				*((unsigned long long*)(buf + i + 8)) = ((lastLen << 56) & 0xFF00000000000000) \
-					| ((lastLen << 40) & 0x00FF000000000000) \
-					| ((lastLen << 24) & 0x0000FF0000000000) \
-					| ((lastLen << 8) & 0x000000FF00000000) \
-					| ((lastLen >> 8) & 0x00000000FF000000) \
-					| ((lastLen >> 24) & 0x0000000000FF0000) \
-					| ((lastLen >> 40) & 0x000000000000FF00) \
-					| ((lastLen >> 56) & 0x00000000000000FF);
+				*((unsigned long long*)(buf + i + 8)) = convertLongEndian(messageLen * 8);
 				break;
-			}
-			else if (padding1) {
+			} else if (padding1) {
 				buf[i] = 0x80;
 				padding1 = false;
-			}
-			else {
+			} else {
 				buf[i] = 0;
 			}
 		}
@@ -346,19 +345,15 @@ void doSha512Encode(const unsigned char* message, int messageLen, unsigned char*
 		unsigned long long* longPtr = (unsigned long long*)w;
 		for (int wi = 0; wi < 80; wi++) {
 			if (wi < 16) {
-				*(longPtr + wi) = ((((unsigned long long*)buf)[wi] << 56) & 0xFF00000000000000) \
-					| ((((unsigned long long*)buf)[wi] << 40) & 0x00FF000000000000) \
-					| ((((unsigned long long*)buf)[wi] << 24) & 0x0000FF0000000000) \
-					| ((((unsigned long long*)buf)[wi] << 8) & 0x000000FF00000000) \
-					| ((((unsigned long long*)buf)[wi] >> 8) & 0x00000000FF000000) \
-					| ((((unsigned long long*)buf)[wi] >> 24) & 0x0000000000FF0000) \
-					| ((((unsigned long long*)buf)[wi] >> 40) & 0x000000000000FF00) \
-					| ((((unsigned long long*)buf)[wi] >> 56) & 0x00000000000000FF);
-			}
-			else {
-				unsigned long long s0 = ((longPtr[wi - 15] >> 1) | (longPtr[wi - 15] << 63)) ^ ((longPtr[wi - 15] >> 8) | (longPtr[wi - 15] << 56)) ^ (longPtr[wi - 15] >> 7);
-				unsigned long long s1 = ((longPtr[wi - 2] >> 19) | (longPtr[wi - 2] << 45)) ^ ((longPtr[wi - 2] >> 61) | (longPtr[wi - 2] << 3)) ^ (longPtr[wi - 2] >> 6);
-				*(longPtr + wi) = longPtr[wi - 16] + s0 + longPtr[wi - 7] + s1;
+				*(longPtr + wi) = ((unsigned long long*)buf)[wi];
+			} else {
+				unsigned long long s0 = convertLongEndian(longPtr[wi - 15]);
+				unsigned long long s1 = convertLongEndian(longPtr[wi -  2]);
+				unsigned long long s2 = convertLongEndian(longPtr[wi - 16]);
+				unsigned long long s3 = convertLongEndian(longPtr[wi -  7]);
+				s0 = ((s0 >>  1) | (s0 << 63)) ^ ((s0 >>  8) | (s0 << 56)) ^ (s0 >> 7);
+				s1 = ((s1 >> 19) | (s1 << 45)) ^ ((s1 >> 61) | (s1 <<  3)) ^ (s1 >> 6);
+				*(longPtr + wi) = convertLongEndian((s0 + s1 + s2 + s3));
 			}
 		}
 
@@ -376,7 +371,7 @@ void doSha512Encode(const unsigned char* message, int messageLen, unsigned char*
 		for (int i = 0; i < 80; ++i) {
 			unsigned long long S1 = ((e >> 14) | (e << 50)) ^ ((e >> 18) | (e << 46)) ^ ((e >> 41) | (e << 23));
 			unsigned long long ch = (e & f) ^ ((~e) & g);
-			temp1 = h + S1 + ch + k[i] + longPtr[i];
+			temp1 = h + S1 + ch + k[i] + convertLongEndian(longPtr[i]);
 
 			unsigned long long S0 = ((a >> 28) | (a << 36)) ^ ((a >> 34) | (a << 30)) ^ ((a >> 39) | (a << 25));
 			unsigned long long maj = (a & b) ^ (a & c) ^ (b & c);
@@ -403,20 +398,20 @@ void doSha512Encode(const unsigned char* message, int messageLen, unsigned char*
 		h7 += h;
 	}
 
-	*((unsigned long long*)out + 0) = (h0 >> 56 & 0x00000000000000FF) | (h0 >> 40 & 0x000000000000FF00) | (h0 >> 24 & 0x0000000000FF0000) | (h0 >> 8 & 0x00000000FF000000) | (h0 << 8 & 0x000000FF00000000) | (h0 << 24 & 0x0000FF0000000000) | (h0 << 40 & 0x00FF000000000000) | (h0 << 56 & 0xFF00000000000000);
-	*((unsigned long long*)out + 1) = (h1 >> 56 & 0x00000000000000FF) | (h1 >> 40 & 0x000000000000FF00) | (h1 >> 24 & 0x0000000000FF0000) | (h1 >> 8 & 0x00000000FF000000) | (h1 << 8 & 0x000000FF00000000) | (h1 << 24 & 0x0000FF0000000000) | (h1 << 40 & 0x00FF000000000000) | (h1 << 56 & 0xFF00000000000000);
-	*((unsigned long long*)out + 2) = (h2 >> 56 & 0x00000000000000FF) | (h2 >> 40 & 0x000000000000FF00) | (h2 >> 24 & 0x0000000000FF0000) | (h2 >> 8 & 0x00000000FF000000) | (h2 << 8 & 0x000000FF00000000) | (h2 << 24 & 0x0000FF0000000000) | (h2 << 40 & 0x00FF000000000000) | (h2 << 56 & 0xFF00000000000000);
-	*((unsigned long long*)out + 3) = (h3 >> 56 & 0x00000000000000FF) | (h3 >> 40 & 0x000000000000FF00) | (h3 >> 24 & 0x0000000000FF0000) | (h3 >> 8 & 0x00000000FF000000) | (h3 << 8 & 0x000000FF00000000) | (h3 << 24 & 0x0000FF0000000000) | (h3 << 40 & 0x00FF000000000000) | (h3 << 56 & 0xFF00000000000000);
-	*((unsigned long long*)out + 4) = (h4 >> 56 & 0x00000000000000FF) | (h4 >> 40 & 0x000000000000FF00) | (h4 >> 24 & 0x0000000000FF0000) | (h4 >> 8 & 0x00000000FF000000) | (h4 << 8 & 0x000000FF00000000) | (h4 << 24 & 0x0000FF0000000000) | (h4 << 40 & 0x00FF000000000000) | (h4 << 56 & 0xFF00000000000000);
-	*((unsigned long long*)out + 5) = (h5 >> 56 & 0x00000000000000FF) | (h5 >> 40 & 0x000000000000FF00) | (h5 >> 24 & 0x0000000000FF0000) | (h5 >> 8 & 0x00000000FF000000) | (h5 << 8 & 0x000000FF00000000) | (h5 << 24 & 0x0000FF0000000000) | (h5 << 40 & 0x00FF000000000000) | (h5 << 56 & 0xFF00000000000000);
-	if (is512) {
-		*((unsigned long long*)out + 6) = (h6 >> 56 & 0x00000000000000FF) | (h6 >> 40 & 0x000000000000FF00) | (h6 >> 24 & 0x0000000000FF0000) | (h6 >> 8 & 0x00000000FF000000) | (h6 << 8 & 0x000000FF00000000) | (h6 << 24 & 0x0000FF0000000000) | (h6 << 40 & 0x00FF000000000000) | (h6 << 56 & 0xFF00000000000000);
-		*((unsigned long long*)out + 7) = (h7 >> 56 & 0x00000000000000FF) | (h7 >> 40 & 0x000000000000FF00) | (h7 >> 24 & 0x0000000000FF0000) | (h7 >> 8 & 0x00000000FF000000) | (h7 << 8 & 0x000000FF00000000) | (h7 << 24 & 0x0000FF0000000000) | (h7 << 40 & 0x00FF000000000000) | (h7 << 56 & 0xFF00000000000000);
+	*((unsigned long long*)out + 0) = convertLongEndian(h0);
+	*((unsigned long long*)out + 1) = convertLongEndian(h1);
+	*((unsigned long long*)out + 2) = convertLongEndian(h2);
+	*((unsigned long long*)out + 3) = convertLongEndian(h3);
+	*((unsigned long long*)out + 4) = convertLongEndian(h4);
+	*((unsigned long long*)out + 5) = convertLongEndian(h5);
+	if (bit == 512) {
+		*((unsigned long long*)out + 6) = convertLongEndian(h6);
+		*((unsigned long long*)out + 7) = convertLongEndian(h7);
 	}
 }
-void sha384Encode(const unsigned char* message, int messageLen, unsigned char* out) {
-	doSha512Encode(message, messageLen, out, false);
+void sha384Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out) {
+	doSha512Encode(message, messageLen, out, 384);
 }
-void sha512Encode(const unsigned char* message, int messageLen, unsigned char* out) {
-	doSha512Encode(message, messageLen, out, true);
+void sha512Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out) {
+	doSha512Encode(message, messageLen, out, 512);
 }
