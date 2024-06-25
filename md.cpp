@@ -1,4 +1,11 @@
-#include "md.h"
+#pragma once
+
+#define MD5_GROUP_BIT 512
+#define MD5_GROUP_LEN (MD5_GROUP_BIT / 8)
+#define MD5_LAST_BIT  64
+#define MD5_LAST_LEN  (MD5_LAST_BIT / 8)
+
+void md5Encode(const unsigned char* message, int messageLen, unsigned char* out);
 
 unsigned char s[]{
 	7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
@@ -27,10 +34,10 @@ unsigned int K[]{
 };
 
 void md5Encode(const unsigned char* message, int messageLen, unsigned char* out) {
-	// ¼ÆËãĞèÒªÌî³äµÄÊıÁ¿
+	// è®¡ç®—éœ€è¦å¡«å……çš„æ•°é‡
 	int paddingCount = 64 - (messageLen % 64);
 	paddingCount = paddingCount > 8 ? paddingCount : paddingCount + 64;
-	paddingCount -= 8;// ×îºó8¸ö×Ö½ÚÓÃÀ´±£´æÊı¾İ³¤¶È
+	paddingCount -= 8;// æœ€å8ä¸ªå­—èŠ‚ç”¨æ¥ä¿å­˜æ•°æ®é•¿åº¦
 
 	unsigned long long dataLen = messageLen + paddingCount + 8;
 
@@ -65,7 +72,7 @@ void md5Encode(const unsigned char* message, int messageLen, unsigned char* out)
 		unsigned int c = C;
 		unsigned int d = D;
 
-		// Ö÷Ñ­»·
+		// ä¸»å¾ªç¯
 		for (int i = 0; i < 64; ++i) {
 			unsigned int F, g;
 
@@ -94,7 +101,7 @@ void md5Encode(const unsigned char* message, int messageLen, unsigned char* out)
 			b += (F << s[i]) | (F >> (32 - s[i]));
 		}
 
-		// ×îÖÕ´¦Àí
+		// æœ€ç»ˆå¤„ç†
 		A += a;
 		B += b;
 		C += c;

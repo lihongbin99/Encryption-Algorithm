@@ -1,4 +1,8 @@
-#include "kdf.h"
+#pragma once
+
+#include "hmac.cpp"
+
+void kdfHmacSha1(const unsigned char* key, int keyLen, const unsigned char* salt, int saltLen, int iter, int outLen, unsigned char* out);
 
 void kdfHmacSha1(const unsigned char* key, int keyLen, const unsigned char* salt, int saltLen, int iter, int outLen, unsigned char* out) {
 	unsigned char hmacSha1Out[20];

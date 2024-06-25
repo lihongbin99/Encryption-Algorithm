@@ -1,4 +1,32 @@
-#include "aes.h"
+#pragma once
+
+#define AES_MODE_ECB 1
+#define AES_MODE_CBC 2
+#define AES_MODE_CFB 3
+#define AES_MODE_OFB 4
+#define AES_MODE_CTR 5
+
+#define AES_KEY_LEN_128 128
+#define AES_KEY_LEN_192 192
+#define AES_KEY_LEN_256 256
+
+#define AES_PADDING_MODE_NONE        0
+#define AES_PADDING_MODE_PKCS7       1
+#define AES_PADDING_MODE_ISO7816_4   2
+#define AES_PADDING_MODE_ANSI923     3
+#define AES_PADDING_MODE_ISO10126    4
+#define AES_PADDING_MODE_ZERO        5
+
+#define AES_ENC_ENCRYPT 1
+#define AES_ENC_DECRYPT 0
+
+int aesAlgorithm(
+	const unsigned char* in,  int inLen, 
+	const unsigned char* key, const unsigned char* iv,
+	unsigned char* out,
+	int aesMode, int keyLen, int paddingMode,
+	int enc
+);
 
 const unsigned char S_BOX[256] = {
 	0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -70,14 +98,14 @@ int aesDecrypt(const unsigned char* in, int inLen,
 	int nk, int nr);
 
 
-void extendKey(const unsigned char* key, unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/], int nk, int nr);
-void AddRoundKey(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/], unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/], int currentNr);
-void SubBytes(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]);
-void ReSubBytes(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]);
-void ShiftRows(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]);
-void ReShiftRows(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]);
-void MixColumns(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]);
-void ReMixColumns(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]);
+void extendKey(const unsigned char* key, unsigned char subKey[4/*è¡Œ.*/][60/*åˆ—.*/], int nk, int nr);
+void AddRoundKey(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/], unsigned char subKey[4/*è¡Œ.*/][60/*åˆ—.*/], int currentNr);
+void SubBytes(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]);
+void ReSubBytes(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]);
+void ShiftRows(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]);
+void ReShiftRows(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]);
+void MixColumns(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]);
+void ReMixColumns(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]);
 
 int aesAlgorithm(const unsigned char* in, int inLen,
 	const unsigned char* key, const unsigned char* iv,
@@ -92,11 +120,11 @@ int aesAlgorithm(const unsigned char* in, int inLen,
 	case AES_MODE_CBC:
 		break;
 	case AES_MODE_CFB:
-		return 0;// Î´Ö§³Ö
+		return 0;// æœªæ”¯æŒ
 	case AES_MODE_OFB:
-		return 0;// Î´Ö§³Ö
+		return 0;// æœªæ”¯æŒ
 	case AES_MODE_CTR:
-		return 0;// Î´Ö§³Ö
+		return 0;// æœªæ”¯æŒ
 	default:
 		return 0;
 	}
@@ -142,14 +170,14 @@ int aesEncrypt(const unsigned char* in, int inLen,
 	int aesMode, int paddingMode,
 	int nk, int nr) {
 	int resultLen = 0;
-	// ·ÖÅäÄÚ´æ
-	unsigned char state    [4/*ĞĞ*/][ 4/*ÁĞ*/];
-	unsigned char subKey   [4/*ĞĞ*/][60/*ÁĞ*/];
+	// åˆ†é…å†…å­˜
+	unsigned char state    [4/*è¡Œ.*/][ 4/*åˆ—.*/];
+	unsigned char subKey   [4/*è¡Œ.*/][60/*åˆ—.*/];
 
-	// ÃÜÔ¿À©Õ¹
+	// å¯†é’¥æ‰©å±•
 	extendKey(key, subKey, nk, nr);
 
-	// ·Ö×é¼ÓÃÜ
+	// åˆ†ç»„åŠ å¯†
 	int modCount = inLen % 16;
 	int encryptLen = inLen;
 	if (paddingMode != AES_PADDING_MODE_NONE) {
@@ -180,23 +208,23 @@ int aesEncrypt(const unsigned char* in, int inLen,
 			}
 		}
 
-		// ÔÚ¿ªÊ¼¼ÓÃÜÇ°ÏÈÖ´ĞĞÒ»´ÎÂÖÃÜÔ¿¼Ó(ÃÜÔ¿Æ¯°×)
+		// åœ¨å¼€å§‹åŠ å¯†å‰å…ˆæ‰§è¡Œä¸€æ¬¡è½®å¯†é’¥åŠ (å¯†é’¥æ¼‚ç™½)
 		AddRoundKey(state, subKey, 0);
 
-		// ¿ªÊ¼¼ÓÃÜ
+		// å¼€å§‹åŠ å¯†
 		for (int currentNr = 1; currentNr <= nr; ++currentNr) {
-			// ×Ö½Ú´ú»»²ã
+			// å­—èŠ‚ä»£æ¢å±‚
 			SubBytes(state);
 
-			// ĞĞÎ»ÒÆ
+			// è¡Œä½ç§»
 			ShiftRows(state);
 
-			// ÁĞ»ìÏı
-			if (currentNr != nr) {// ×îºóÒ»ÂÖ²»½øĞĞÁĞ»ìÏı
+			// åˆ—æ··æ·†
+			if (currentNr != nr) {// æœ€åä¸€è½®ä¸è¿›è¡Œåˆ—æ··æ·†
 				MixColumns(state);
 			}
 			
-			// ÃÜÔ¿¼Ó·¨²ã
+			// å¯†é’¥åŠ æ³•å±‚
 			AddRoundKey(state, subKey, currentNr);
 		}
 
@@ -215,37 +243,37 @@ int aesDecrypt(const unsigned char* in, int inLen,
 	int aesMode, int paddingMode,
 	int nk, int nr) {
 	int resultLen = 0;
-	// ·ÖÅäÄÚ´æ
-	unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/];
-	unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/];
+	// åˆ†é…å†…å­˜
+	unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/];
+	unsigned char subKey[4/*è¡Œ.*/][60/*åˆ—.*/];
 
-	// ÃÜÔ¿À©Õ¹
+	// å¯†é’¥æ‰©å±•
 	extendKey(key, subKey, nk, nr);
 
-	// ·Ö×é¼ÓÃÜ
+	// åˆ†ç»„åŠ å¯†
 	for (int index = inLen - 16; index >= 0; index -= 16) {
 		for (int i = 0; i < 16; ++i) {
 			state[i & 0x03][i >> 2] = in[index + i];
 		}
 
-		// ¿ªÊ¼½âÃÜ
+		// å¼€å§‹è§£å¯†
 		for (int currentNr = nr; currentNr >= 1; --currentNr) {
-			// ÃÜÔ¿¼Ó·¨²ã
+			// å¯†é’¥åŠ æ³•å±‚
 			AddRoundKey(state, subKey, currentNr);
 
-			// ÁĞ»ìÏı
-			if (currentNr != nr) {// ×îºóÒ»ÂÖ²»½øĞĞÁĞ»ìÏı
+			// åˆ—æ··æ·†
+			if (currentNr != nr) {// æœ€åä¸€è½®ä¸è¿›è¡Œåˆ—æ··æ·†
 				ReMixColumns(state);
 			}
 
-			// ĞĞÎ»ÒÆ
+			// è¡Œä½ç§»
 			ReShiftRows(state);
 
-			// ×Ö½Ú´ú»»²ã
+			// å­—èŠ‚ä»£æ¢å±‚
 			ReSubBytes(state);
 		}
 
-		// ÔÚ½âÃÜºóĞèÒªÔÚÖ´ĞĞÒ»´ÎÂÖÃÜÔ¿¼Ó(ÃÜÔ¿Æ¯°×)
+		// åœ¨è§£å¯†åéœ€è¦åœ¨æ‰§è¡Œä¸€æ¬¡è½®å¯†é’¥åŠ (å¯†é’¥æ¼‚ç™½)
 		AddRoundKey(state, subKey, 0);
 
 		if (aesMode == AES_MODE_CBC) {
@@ -277,8 +305,8 @@ int aesDecrypt(const unsigned char* in, int inLen,
 	return resultLen;
 }
 
-void extendKey(const unsigned char* key, unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/], int nk, int nr) {
-	for (int i = 0; i < 4/*ĞĞ*/ * nk; ++i) {
+void extendKey(const unsigned char* key, unsigned char subKey[4/*è¡Œ.*/][60/*åˆ—.*/], int nk, int nr) {
+	for (int i = 0; i < 4/*è¡Œ.*/ * nk; ++i) {
 		subKey[i & 0x03][i >> 2] = key[i];
 	}
 
@@ -291,19 +319,19 @@ void extendKey(const unsigned char* key, unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/]
 		temp[3] = subKey[3][cloumn - 1];
 
 		if (cloumn % nk == 0) {
-			// ×ÖÑ­»·
+			// å­—å¾ªç¯
 			unsigned int* tempIntptr = (unsigned int*)temp;
 			*tempIntptr = (*tempIntptr) << 24 | (*tempIntptr) >> 8;
-			// ×Ö½Ú´ú»»
+			// å­—èŠ‚ä»£æ¢
 			temp[0] = S_BOX[temp[0]];
 			temp[1] = S_BOX[temp[1]];
 			temp[2] = S_BOX[temp[2]];
 			temp[3] = S_BOX[temp[3]];
-			// ÂÖ³£Á¿Òì»ò
+			// è½®å¸¸é‡å¼‚æˆ–
 			temp[0] ^= Rcon[rconIndex++];
 		} else if (nk == 8 && cloumn % 4 == 0) {
-			// AES-256 µÄÌØÊâ´¦Àí
-			// ×Ö½Ú´ú»»
+			// AES-256 çš„ç‰¹æ®Šå¤„ç†
+			// å­—èŠ‚ä»£æ¢
 			temp[0] = S_BOX[temp[0]];
 			temp[1] = S_BOX[temp[1]];
 			temp[2] = S_BOX[temp[2]];
@@ -317,7 +345,7 @@ void extendKey(const unsigned char* key, unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/]
 	}
 }
 
-void AddRoundKey(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/], unsigned char subKey[4/*ĞĞ*/][60/*ÁĞ*/], int currentNr) {
+void AddRoundKey(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/], unsigned char subKey[4/*è¡Œ.*/][60/*åˆ—.*/], int currentNr) {
 	for (int row = 0; row < 4; ++row) {
 		for (int cloumn = 0; cloumn < 4; ++cloumn) {
 			state[row][cloumn] ^= subKey[row][currentNr * 4 + cloumn];
@@ -325,7 +353,7 @@ void AddRoundKey(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/], unsigned char subKey[4/*
 	}
 }
 
-void SubBytes(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
+void SubBytes(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]) {
 	for (int row = 0; row < 4; ++row) {
 		for (int cloumn = 0; cloumn < 4; ++cloumn) {
 			state[row][cloumn] = S_BOX[state[row][cloumn]];
@@ -333,7 +361,7 @@ void SubBytes(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
 	}
 }
 
-void ReSubBytes(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
+void ReSubBytes(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]) {
 	for (int row = 0; row < 4; ++row) {
 		for (int cloumn = 0; cloumn < 4; ++cloumn) {
 			state[row][cloumn] = ReS_BOX[state[row][cloumn]];
@@ -341,14 +369,14 @@ void ReSubBytes(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
 	}
 }
 
-void ShiftRows(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
+void ShiftRows(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]) {
 	unsigned int* tempIntPtr = (unsigned int*)state;
 	tempIntPtr[1] = tempIntPtr[1] >>  8 | tempIntPtr[1] << 24;
 	tempIntPtr[2] = tempIntPtr[2] >> 16 | tempIntPtr[2] << 16;
 	tempIntPtr[3] = tempIntPtr[3] >> 24 | tempIntPtr[3] <<  8;
 }
 
-void ReShiftRows(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
+void ReShiftRows(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]) {
 	unsigned int* tempIntPtr = (unsigned int*)state;
 	tempIntPtr[1] = tempIntPtr[1] <<  8 | tempIntPtr[1] >> 24;
 	tempIntPtr[2] = tempIntPtr[2] << 16 | tempIntPtr[2] >> 16;
@@ -373,8 +401,8 @@ unsigned char MixColumnsImpl(unsigned char mix, unsigned char num) {
 	}
 	return result;
 }
-void MixColumns(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
-	unsigned char stateTemp[4/*ĞĞ*/][4/*ÁĞ*/];
+void MixColumns(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]) {
+	unsigned char stateTemp[4/*è¡Œ.*/][4/*åˆ—.*/];
 	for (int row = 0; row < 4; ++row) {
 		for (int cloumn = 0; cloumn < 4; ++cloumn) {
 			stateTemp[row][cloumn] = state[row][cloumn];
@@ -391,8 +419,8 @@ void MixColumns(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
 		}
 	}
 }
-void ReMixColumns(unsigned char state[4/*ĞĞ*/][4/*ÁĞ*/]) {
-	unsigned char stateTemp[4/*ĞĞ*/][4/*ÁĞ*/];
+void ReMixColumns(unsigned char state[4/*è¡Œ.*/][4/*åˆ—.*/]) {
+	unsigned char stateTemp[4/*è¡Œ.*/][4/*åˆ—.*/];
 	for (int row = 0; row < 4; ++row) {
 		for (int cloumn = 0; cloumn < 4; ++cloumn) {
 			stateTemp[row][cloumn] = state[row][cloumn];

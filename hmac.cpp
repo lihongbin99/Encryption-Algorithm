@@ -1,9 +1,15 @@
-#include "hmac.h"
+#pragma once
+
+#include<cstring>
+
+#include "sha.cpp"
+
+void hmacSha1(const unsigned char* key, int keyLen, const unsigned char* message, int messageLen, unsigned char* out);
 
 #define SHA1_GROUP_LEN 64
 
 void hmacSha1(const unsigned char* key, int keyLen, const unsigned char* message, int messageLen, unsigned char* out) {
-	// Ìî³ä Key
+	// ÄšÃ®Å‚Ã¤ Key
 	unsigned char hmacKey[64];
 	if (keyLen > SHA1_GROUP_LEN) {
 		sha1Encode(key, keyLen, hmacKey);

@@ -1,0 +1,18 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "Encryption-Algorithm",
+            "command": "cl.exe",
+            "args": [
+                "/Zi",
+                "/Fe${fileDirname}\\out\\main.exe",
+                "${fileDirname}\\main.cpp",
+            ],
+            "group": {
+                "isDefault": true
+            }
+        }
+    ],
+    "version": "2.0.0"
+}

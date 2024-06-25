@@ -1,4 +1,19 @@
-#include "sha.h"
+#pragma once
+
+#define SHA1_OUTLEN 20
+void sha1Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out);
+
+#define SHA224_OUTLEN 28
+void sha224Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out);
+
+#define SHA256_OUTLEN 32
+void sha256Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out);
+
+#define SHA384_OUTLEN 48
+void sha384Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out);
+
+#define SHA512_OUTLEN 64
+void sha512Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out);
 
 #define convertIntEndian(num) (\
 	((num >> 24) & 0x000000FF) | \
@@ -17,10 +32,10 @@
 	((num << 56) & 0xFF00000000000000) )
 
 void sha1Encode(const unsigned char* message, unsigned long long messageLen, unsigned char* out) {
-	// ¼ÆËãĞèÒªÌî³äµÄÊıÁ¿
+	// è®¡ç®—éœ€è¦å¡«å……çš„æ•°é‡
 	int paddingCount = 64 - (messageLen % 64);
 	paddingCount = paddingCount > 8 ? paddingCount : paddingCount + 64;
-	paddingCount -= 8;// ×îºó8¸ö×Ö½ÚÓÃÀ´±£´æÊı¾İ³¤¶È
+	paddingCount -= 8;// æœ€å8ä¸ªå­—èŠ‚ç”¨æ¥ä¿å­˜æ•°æ®é•¿åº¦
 
 	unsigned long long dataLen = messageLen + paddingCount + 8;
 
@@ -31,7 +46,7 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 	unsigned int E = 0xC3D2E1F0;
 
 	unsigned char buf[64];
-	unsigned char w[80 * 32]; // °Ñ 512bit ·ÖÎª 16dword ÔÙÀ©³äÎª 80dword
+	unsigned char w[80 * 32]; // æŠŠ 512bit åˆ†ä¸º 16dword å†æ‰©å……ä¸º 80dword
 	bool padding1 = true;
 	for (int index = 0; index < dataLen; index += 64) {
 		for (int i = 0; i < 64; ++i) {
@@ -48,7 +63,7 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 			}
 		}
 
-		// Êı¾İÀ©³ä
+		// æ•°æ®æ‰©å……
 		unsigned int* intPtr = (unsigned int*)w;
 		for (int wi = 0; wi < 80; wi++) {
 			if (wi < 16) {
@@ -68,7 +83,7 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 		unsigned int d = D;
 		unsigned int e = E;
 
-		// Ö÷Ñ­»·
+		// ä¸»å¾ªç¯
 		for (int i = 0; i < 80; ++i) {
 			unsigned int f, k;
 			if (i < 20) {
@@ -106,7 +121,7 @@ void sha1Encode(const unsigned char* message, unsigned long long messageLen, uns
 			a = te;
 		}
 
-		// ×îÖÕ´¦Àí
+		// æœ€ç»ˆå¤„ç†
 		A += a;
 		B += b;
 		C += c;
@@ -166,15 +181,15 @@ void doSha256Encode(const unsigned char* message, unsigned long long messageLen,
 		0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 	};
 
-	// ¼ÆËãĞèÒªÌî³äµÄÊıÁ¿
+	// è®¡ç®—éœ€è¦å¡«å……çš„æ•°é‡
 	int paddingCount = 64 - (messageLen % 64);
 	paddingCount = paddingCount > 8 ? paddingCount : paddingCount + 64;
-	paddingCount -= 8;// ×îºó8¸ö×Ö½ÚÓÃÀ´±£´æÊı¾İ³¤¶È
+	paddingCount -= 8;// æœ€å8ä¸ªå­—èŠ‚ç”¨æ¥ä¿å­˜æ•°æ®é•¿åº¦
 
 	unsigned long long dataLen = messageLen + paddingCount + 8;
 
 	unsigned char buf[64];
-	unsigned char w[64 * 32]; // °Ñ 512bit ·ÖÎª 16dword ÔÙÀ©³äÎª 64dword
+	unsigned char w[64 * 32]; // æŠŠ 512bit åˆ†ä¸º 16dword å†æ‰©å……ä¸º 64dword
 	bool padding1 = true;
 	for (int index = 0; index < dataLen; index += 64) {
 		for (int i = 0; i < 64; ++i) {
@@ -215,7 +230,7 @@ void doSha256Encode(const unsigned char* message, unsigned long long messageLen,
 		unsigned int g = h6;
 		unsigned int h = h7;
 
-		// Ö÷Ñ­»·
+		// ä¸»å¾ªç¯
 		unsigned int temp1, temp2;
 		for (int i = 0; i < 64; ++i) {
 			unsigned int S1 = ((e >> 6) | (e << 26)) ^ ((e >> 11) | (e << 21)) ^ ((e >> 25) | (e << 7));
@@ -235,7 +250,7 @@ void doSha256Encode(const unsigned char* message, unsigned long long messageLen,
 			a = temp1 + temp2;
 		}
 
-		// ×îÖÕ´¦Àí
+		// æœ€ç»ˆå¤„ç†
 		h0 += a;
 		h1 += b;
 		h2 += c;
@@ -318,15 +333,15 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 			0x431d67c49c100d4c, 0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817,
 	};
 
-	// ¼ÆËãĞèÒªÌî³äµÄÊıÁ¿
+	// è®¡ç®—éœ€è¦å¡«å……çš„æ•°é‡
 	int paddingCount = 128 - (messageLen % 128);
 	paddingCount = paddingCount > 16 ? paddingCount : paddingCount + 128;
-	paddingCount -= 16;// ×îºó16¸ö×Ö½ÚÓÃÀ´±£´æÊı¾İ³¤¶È
+	paddingCount -= 16;// æœ€å16ä¸ªå­—èŠ‚ç”¨æ¥ä¿å­˜æ•°æ®é•¿åº¦
 
 	unsigned long long dataLen = messageLen + paddingCount + 16;
 
 	unsigned char buf[128];
-	unsigned char w[80 * 64]; // °Ñ 1024bit ·ÖÎª 16qword ÔÙÀ©³äÎª 80qword
+	unsigned char w[80 * 64]; // æŠŠ 1024bit åˆ†ä¸º 16qword å†æ‰©å……ä¸º 80qword
 	bool padding1 = true;
 	for (int index = 0; index < dataLen; index += 128) {
 		for (int i = 0; i < 128; ++i) {
@@ -344,7 +359,7 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 			}
 		}
 
-		// Êı¾İÌî³ä
+		// æ•°æ®å¡«å……
 		unsigned long long* longPtr = (unsigned long long*)w;
 		for (int wi = 0; wi < 80; wi++) {
 			if (wi < 16) {
@@ -369,7 +384,7 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 		unsigned long long g = h6;
 		unsigned long long h = h7;
 
-		// Ö÷Ñ­»·
+		// ä¸»å¾ªç¯
 		unsigned long long temp1, temp2;
 		for (int i = 0; i < 80; ++i) {
 			unsigned long long S1 = ((e >> 14) | (e << 50)) ^ ((e >> 18) | (e << 46)) ^ ((e >> 41) | (e << 23));
@@ -390,7 +405,7 @@ void doSha512Encode(const unsigned char* message, unsigned long long messageLen,
 			a = temp1 + temp2;
 		}
 
-		// ×îÖÕ´¦Àí
+		// æœ€ç»ˆå¤„ç†
 		h0 += a;
 		h1 += b;
 		h2 += c;
